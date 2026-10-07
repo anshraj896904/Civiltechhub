@@ -65,10 +65,18 @@ import com.example.data.StudyMaterialType
 import com.example.data.StudyMode
 import com.example.data.TopicLessonModule
 import com.example.ui.components.SearchableStudyIndexComponent
+import com.example.ui.components.ThreeDVisualTeachCard
+import com.example.ui.components.ThreeDVisualTeachGallery
 import com.example.ui.theme.BlueprintNavyDark
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.SafetyAmber
 import com.example.ui.theme.SiteGreen
+
+private enum class CurriculumViewMode {
+    STUDY_INDEX,
+    THREE_D_TEACH,
+    SYLLABUS_MODULES
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -93,7 +101,7 @@ fun CurriculumLabScreen(
     onBackToTutor: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showSearchableIndexView by rememberSaveable { mutableStateOf(true) }
+    var activeViewMode by rememberSaveable { mutableStateOf(CurriculumViewMode.STUDY_INDEX) }
 
     BackHandler {
         if (selectedModule != null) {
@@ -104,53 +112,76 @@ fun CurriculumLabScreen(
     }
 
     if (selectedModule == null) {
-        if (showSearchableIndexView) {
-            SearchableStudyIndexComponent(
-                searchQuery = searchQuery,
-                selectedDiplomaTrack = selectedDiplomaTrack,
-                selectedSoftwareCategory = selectedSoftwareCategory,
-                selectedMaterialType = selectedMaterialType,
-                onSearchQueryChange = onSearchQueryChange,
-                onSelectDiplomaTrack = onSelectDiplomaTrack,
-                onSelectSoftwareCategory = onSelectSoftwareCategory,
-                onSelectMaterialType = onSelectMaterialType,
-                onResetFilters = onResetIndexFilters,
-                onOpenModule = { mod -> onSelectModule(mod) },
-                onStudyItemInTutor = onStudyItemInTutor,
-                modifier = modifier.fillMaxSize(),
-                headerContent = {
-                    CurriculumHeaderWithViewSwitcher(
-                        showSearchableIndexView = showSearchableIndexView,
-                        onToggleView = { showSearchableIndexView = it }
-                    )
-                }
-            )
-        } else {
-            val filteredModules = CivilCurriculumCatalog.topics.filter { module ->
-                val matchesTrack = selectedDiplomaTrack == DiplomaTrack.ALL_TRACKS ||
-                    CivilCurriculumCatalog.diplomaTracksForModule(module.id).contains(selectedDiplomaTrack)
-                val matchesSoftware = selectedSoftwareCategory == SoftwareCategory.ALL ||
-                    CivilCurriculumCatalog.softwareCategoryForModule(module.id) == selectedSoftwareCategory
-                val matchesQuery = searchQuery.isBlank() ||
-                    module.title.contains(searchQuery, ignoreCase = true) ||
-                    module.shortName.contains(searchQuery, ignoreCase = true) ||
-                    module.overviewSimple.contains(searchQuery, ignoreCase = true)
-                matchesTrack && matchesSoftware && matchesQuery
+        when (activeViewMode) {
+            CurriculumViewMode.STUDY_INDEX -> {
+                SearchableStudyIndexComponent(
+                    searchQuery = searchQuery,
+                    selectedDiplomaTrack = selectedDiplomaTrack,
+                    selectedSoftwareCategory = selectedSoftwareCategory,
+                    selectedMaterialType = selectedMaterialType,
+                    onSearchQueryChange = onSearchQueryChange,
+                    onSelectDiplomaTrack = onSelectDiplomaTrack,
+                    onSelectSoftwareCategory = onSelectSoftwareCategory,
+                    onSelectMaterialType = onSelectMaterialType,
+                    onResetFilters = onResetIndexFilters,
+                    onOpenModule = { mod -> onSelectModule(mod) },
+                    onStudyItemInTutor = onStudyItemInTutor,
+                    modifier = modifier.fillMaxSize(),
+                    headerContent = {
+                        CurriculumHeaderWithViewSwitcher(
+                            activeViewMode = activeViewMode,
+                            onSelectViewMode = { activeViewMode = it }
+                        )
+                    }
+                )
             }
 
-            LazyColumn(
-                modifier = modifier
-                    .fillMaxSize()
-                    .testTag("curriculum_module_list"),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item {
-                    CurriculumHeaderWithViewSwitcher(
-                        showSearchableIndexView = showSearchableIndexView,
-                        onToggleView = { showSearchableIndexView = it }
-                    )
+            CurriculumViewMode.THREE_D_TEACH -> {
+                ThreeDVisualTeachGallery(
+                    selectedDiplomaTrack = selectedDiplomaTrack,
+                    selectedSoftwareCategory = selectedSoftwareCategory,
+                    onSelectDiplomaTrack = onSelectDiplomaTrack,
+                    onSelectSoftwareCategory = onSelectSoftwareCategory,
+                    onOpenModule = { mod -> onSelectModule(mod) },
+                    onAskTutorAbout3D = { _, _, mod ->
+                        onLaunchInTutor(mod, StudyMode.PRACTICE_SOFTWARE, "")
+                    },
+                    modifier = modifier.fillMaxSize(),
+                    headerContent = {
+                        CurriculumHeaderWithViewSwitcher(
+                            activeViewMode = activeViewMode,
+                            onSelectViewMode = { activeViewMode = it }
+                        )
+                    }
+                )
+            }
+
+            CurriculumViewMode.SYLLABUS_MODULES -> {
+                val filteredModules = CivilCurriculumCatalog.topics.filter { module ->
+                    val matchesTrack = selectedDiplomaTrack == DiplomaTrack.ALL_TRACKS ||
+                        CivilCurriculumCatalog.diplomaTracksForModule(module.id).contains(selectedDiplomaTrack)
+                    val matchesSoftware = selectedSoftwareCategory == SoftwareCategory.ALL ||
+                        CivilCurriculumCatalog.softwareCategoryForModule(module.id) == selectedSoftwareCategory
+                    val matchesQuery = searchQuery.isBlank() ||
+                        module.title.contains(searchQuery, ignoreCase = true) ||
+                        module.shortName.contains(searchQuery, ignoreCase = true) ||
+                        module.overviewSimple.contains(searchQuery, ignoreCase = true)
+                    matchesTrack && matchesSoftware && matchesQuery
                 }
+
+                LazyColumn(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .testTag("curriculum_module_list"),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        CurriculumHeaderWithViewSwitcher(
+                            activeViewMode = activeViewMode,
+                            onSelectViewMode = { activeViewMode = it }
+                        )
+                    }
 
                 items(filteredModules, key = { it.id }) { module ->
                     val moduleTracks = CivilCurriculumCatalog.diplomaTracksForModule(module.id)
@@ -275,6 +306,7 @@ fun CurriculumLabScreen(
                     }
                 }
             }
+            }
         }
     } else {
         TopicModuleDetailView(
@@ -288,38 +320,46 @@ fun CurriculumLabScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CurriculumHeaderWithViewSwitcher(
-    showSearchableIndexView: Boolean,
-    onToggleView: (Boolean) -> Unit
+    activeViewMode: CurriculumViewMode,
+    onSelectViewMode: (CurriculumViewMode) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "Study Material Index & Curriculum Lab",
+                text = "Study Material Index & 3D Lab",
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "Search and filter Civil & BIM study materials categorized by software (AutoCAD, Revit, Navisworks, MicroStation, Bluebeam, CDE/COBie) and tailored to your current Diploma Track.",
+                text = "Search and filter Civil & BIM study materials by software (AutoCAD, Revit, Navisworks, MicroStation, Bluebeam, CDE/COBie), Diploma Track, and interactive 3D visual diagrams.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             FilterChip(
-                selected = showSearchableIndexView,
-                onClick = { onToggleView(true) },
+                selected = activeViewMode == CurriculumViewMode.STUDY_INDEX,
+                onClick = { onSelectViewMode(CurriculumViewMode.STUDY_INDEX) },
                 label = { Text("Searchable Study Index") },
                 modifier = Modifier.testTag("view_mode_study_index")
             )
             FilterChip(
-                selected = !showSearchableIndexView,
-                onClick = { onToggleView(false) },
+                selected = activeViewMode == CurriculumViewMode.THREE_D_TEACH,
+                onClick = { onSelectViewMode(CurriculumViewMode.THREE_D_TEACH) },
+                label = { Text("3D Image Teach (${CivilCurriculumCatalog.visual3DScenes.size})") },
+                modifier = Modifier.testTag("view_mode_3d_teach")
+            )
+            FilterChip(
+                selected = activeViewMode == CurriculumViewMode.SYLLABUS_MODULES,
+                onClick = { onSelectViewMode(CurriculumViewMode.SYLLABUS_MODULES) },
                 label = { Text("Syllabus Modules (${CivilCurriculumCatalog.topics.size})") },
                 modifier = Modifier.testTag("view_mode_syllabus_modules")
             )
@@ -431,6 +471,17 @@ private fun TopicModuleDetailView(
                     }
                 }
             }
+        }
+
+        // 3D Image & Interactive Viewport Teaching Section for this Module
+        item {
+            val scene = CivilCurriculumCatalog.visual3DSceneForModule(module.id)
+            ThreeDVisualTeachCard(
+                scene = scene,
+                onAskTutorAbout3D = { _, _ ->
+                    onLaunchInTutor(module, StudyMode.PRACTICE_SOFTWARE, chosenVersion)
+                }
+            )
         }
 
         // Simple English Overview & Real Site Example

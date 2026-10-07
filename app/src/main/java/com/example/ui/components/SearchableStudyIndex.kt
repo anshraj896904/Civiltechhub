@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,10 +60,13 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -662,6 +667,52 @@ private fun StudyMaterialIndexCard(
                 fontWeight = FontWeight.Bold
             )
 
+            if (item.materialType == StudyMaterialType.VISUAL_3D_TEACH) {
+                val scene = remember(item.parentModuleId) {
+                    CivilCurriculumCatalog.visual3DSceneForModule(item.parentModuleId)
+                }
+                val drawableRes = resolve3DTeachDrawableRes(scene.imageAssetType)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(145.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    Image(
+                        painter = painterResource(id = drawableRes),
+                        contentDescription = item.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = BlueprintNavyDark.copy(alpha = 0.85f),
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ViewInAr,
+                                contentDescription = null,
+                                tint = SafetyAmber,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "${scene.callouts.size} Interactive 3D Hotspots + 3D Orbit Canvas",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SafetyAmber,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
             Text(
                 text = item.summary,
                 style = MaterialTheme.typography.bodyMedium,
@@ -782,6 +833,7 @@ private fun iconForSoftwareCategory(category: SoftwareCategory): ImageVector = w
 
 private fun iconForMaterialType(type: StudyMaterialType): ImageVector = when (type) {
     StudyMaterialType.ALL -> Icons.AutoMirrored.Filled.MenuBook
+    StudyMaterialType.VISUAL_3D_TEACH -> Icons.Default.ViewInAr
     StudyMaterialType.CONCEPT_GUIDE -> Icons.Default.School
     StudyMaterialType.STEP_WORKFLOW -> Icons.Default.Layers
     StudyMaterialType.COMMAND_REFERENCE -> Icons.Default.Terminal
@@ -792,6 +844,7 @@ private fun iconForMaterialType(type: StudyMaterialType): ImageVector = when (ty
 
 private fun badgeColorForMaterialType(type: StudyMaterialType): Color = when (type) {
     StudyMaterialType.ALL -> BlueprintNavy
+    StudyMaterialType.VISUAL_3D_TEACH -> Color(0xFFD62828)
     StudyMaterialType.CONCEPT_GUIDE -> BlueprintNavy
     StudyMaterialType.STEP_WORKFLOW -> BlueprintCyan
     StudyMaterialType.COMMAND_REFERENCE -> Color(0xFF5A189A)

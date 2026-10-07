@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CivilBIM Tutor</string>
+    <string name="app_name">Civil Tutor</string>
     <string name="nav_tutor">AI Tutor</string>
     <string name="nav_curriculum">Topics &amp; Lab</string>
     <string name="nav_interview">Mock Interview</string>

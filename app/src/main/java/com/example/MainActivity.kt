@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,7 +29,11 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -39,11 +44,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.StudyMode
 import com.example.ui.CivilTutorViewModel
 import com.example.ui.MainTab
+import com.example.ui.components.CloudSyncStatusBanner
+import com.example.ui.components.GoogleSignInScreen
 import com.example.ui.screens.CommandVaultScreen
 import com.example.ui.screens.CurriculumLabScreen
 import com.example.ui.screens.MockInterviewScreen
 import com.example.ui.screens.TutorChatScreen
 import com.example.ui.theme.MyApplicationTheme
+import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,8 +61,46 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
-                CivilBimTutorApp()
+                AppAuthGateRoot()
             }
+        }
+    }
+}
+
+@Composable
+fun AppAuthGateRoot() {
+    var currentUser by remember {
+        mutableStateOf(runCatching { Firebase.auth.currentUser }.getOrNull())
+    }
+
+    DisposableEffect(Unit) {
+        val authInstance = runCatching { Firebase.auth }.getOrNull()
+        val listener = FirebaseAuth.AuthStateListener { auth ->
+            currentUser = auth.currentUser
+        }
+        authInstance?.addAuthStateListener(listener)
+        onDispose {
+            authInstance?.removeAuthStateListener(listener)
+        }
+    }
+
+    val user = currentUser
+    if (user == null) {
+        GoogleSignInScreen(
+            onAuthSuccess = {
+                currentUser = runCatching { Firebase.auth.currentUser }.getOrNull()
+            }
+        )
+    } else {
+        val viewModel: CivilTutorViewModel = viewModel(key = user.uid)
+        Column(modifier = Modifier.fillMaxSize()) {
+            CloudSyncStatusBanner(
+                currentUser = user,
+                onSignOut = {
+                    currentUser = null
+                }
+            )
+            CivilBimTutorApp(viewModel = viewModel)
         }
     }
 }

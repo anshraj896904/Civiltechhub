@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "CivilBIM Tutor"
+rootProject.name = "Civil Tutor"
 
 include(":app")

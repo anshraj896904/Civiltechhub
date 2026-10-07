@@ -113,6 +113,7 @@ enum class SoftwareCategory(
 
 enum class StudyMaterialType(val id: String, val label: String) {
     ALL("all", "All Materials"),
+    VISUAL_3D_TEACH("visual_3d", "3D Image Teach"),
     CONCEPT_GUIDE("concept", "Concept Guide"),
     STEP_WORKFLOW("workflow", "Step Workflow"),
     COMMAND_REFERENCE("command", "Command Reference"),
@@ -120,6 +121,30 @@ enum class StudyMaterialType(val id: String, val label: String) {
     PRACTICE_EXERCISE("exercise", "Practice Lab"),
     QUICK_CHECK("quiz", "Quick Check")
 }
+
+data class Visual3DCallout(
+    val id: String,
+    val number: Int,
+    val label: String,
+    val xFraction: Float,
+    val yFraction: Float,
+    val explanationSimple: String,
+    val exactCommandOrRule: String,
+    val siteImpact: String
+)
+
+data class Visual3DTeachScene(
+    val id: String,
+    val moduleId: String,
+    val title: String,
+    val subtitle: String,
+    val softwareCategory: SoftwareCategory,
+    val diplomaTracks: List<DiplomaTrack>,
+    val imageAssetType: String,
+    val modelPreset: String,
+    val callouts: List<Visual3DCallout>,
+    val stageDescriptions: List<String>
+)
 
 data class StudyMaterialIndexItem(
     val id: String,
@@ -757,6 +782,35 @@ object CivilCurriculumCatalog {
                     module.badge
                 }
 
+                // 0. 3D Visual Image & Interactive Viewport Teach Item
+                val scene = visual3DSceneForModule(module.id)
+                add(
+                    StudyMaterialIndexItem(
+                        id = "${module.id}_3d_teach",
+                        parentModuleId = module.id,
+                        title = "3D Image Teach: ${scene.title}",
+                        summary = "${scene.subtitle} Tap to inspect 3D callout hotspots (${scene.callouts.joinToString { it.label }}) and orbit the interactive 3D CAD/BIM model.",
+                        softwareCategory = category,
+                        softwareVersionTag = versionTag,
+                        materialType = StudyMaterialType.VISUAL_3D_TEACH,
+                        diplomaTracks = tracks,
+                        estimatedMinutes = 10,
+                        keywords = listOf(
+                            "3d",
+                            "3d image",
+                            "3d teach",
+                            "visual",
+                            "isometric",
+                            "diagram",
+                            "model",
+                            module.shortName,
+                            category.displayName
+                        ) + scene.callouts.map { it.label },
+                        commandHighlight = scene.callouts.firstOrNull()?.exactCommandOrRule.orEmpty(),
+                        recommendedMode = StudyMode.PRACTICE_SOFTWARE
+                    )
+                )
+
                 // 1. Core Concept & Site Guide
                 add(
                     StudyMaterialIndexItem(
@@ -922,5 +976,428 @@ object CivilCurriculumCatalog {
 
             matchesTrack && matchesSoftware && matchesType && matchesQuery
         }
+    }
+
+    val visual3DScenes: List<Visual3DTeachScene> by lazy {
+        listOf(
+            Visual3DTeachScene(
+                id = "scene_autocad_3d",
+                moduleId = "autocad",
+                title = "AutoCAD 2D Grid to 3D Solid Extrusion",
+                subtitle = "See how 2D closed polylines on structural layers extrude into 3D isolated RCC footings and columns.",
+                softwareCategory = SoftwareCategory.AUTOCAD,
+                diplomaTracks = diplomaTracksForModule("autocad"),
+                imageAssetType = "RCC_REBAR",
+                modelPreset = "RCC_FRAME",
+                callouts = listOf(
+                    Visual3DCallout(
+                        id = "acad_c1",
+                        number = 1,
+                        label = "2D Structural Centerline Grid (S-GRID)",
+                        xFraction = 0.22f,
+                        yFraction = 0.78f,
+                        explanationSimple = "Cyan 3D grid lines (Grid A-B & 1-2) form the exact coordinate base before any 3D footing or column is modeled.",
+                        exactCommandOrRule = "XLINE (XL) + OFFSET (O) on Layer S-GRID",
+                        siteImpact = "Matches the site engineer's lime-powder excavation centerline strings on the ground."
+                    ),
+                    Visual3DCallout(
+                        id = "acad_c2",
+                        number = 2,
+                        label = "Closed Polyline Pad Footing (1500x1500x450mm)",
+                        xFraction = 0.48f,
+                        yFraction = 0.72f,
+                        explanationSimple = "Only a single CLOSED Polyline (REC or PL with Close) extrudes into a solid 3D concrete pad foundation.",
+                        exactCommandOrRule = "REC -> EXTRUDE (EXT + Enter) -> 450mm",
+                        siteImpact = "Unjoined lines extrude as hollow paper surfaces and fail 3D concrete volume checks (MASSPROP)."
+                    ),
+                    Visual3DCallout(
+                        id = "acad_c3",
+                        number = 3,
+                        label = "3D Extruded RCC Column (300x450mm)",
+                        xFraction = 0.52f,
+                        yFraction = 0.42f,
+                        explanationSimple = "Extruded vertically along the +Z axis from top of footing to the floor beam soffit level.",
+                        exactCommandOrRule = "UCS -> EXTRUDE (EXT) -> 3000mm",
+                        siteImpact = "Visualizes column orientation (longer 450mm face aligned with major bending axis) before shuttering."
+                    ),
+                    Visual3DCallout(
+                        id = "acad_c4",
+                        number = 4,
+                        label = "3D Floor Beam & Slab Tie Intersection",
+                        xFraction = 0.68f,
+                        yFraction = 0.25f,
+                        explanationSimple = "Shows how top plinth/floor beams frame cleanly into the column head in 3D SE Isometric view.",
+                        exactCommandOrRule = "VSCURRENT > Realistic / X-Ray | UNION / INTERFERE",
+                        siteImpact = "Helps junior engineers verify beam drop depth vs door lintel clearance."
+                    )
+                ),
+                stageDescriptions = listOf(
+                    "Stage 1 (2D Grid): Set UNITS (UN) to mm and draft orthogonal S-GRID axes.",
+                    "Stage 2 (3D Footing): Draw closed REC (1500x1500) and EXTRUDE upward by 450mm.",
+                    "Stage 3 (3D Column): Place 300x450mm column profile at grid intersection and EXTRUDE 3000mm.",
+                    "Stage 4 (3D Frame Check): Switch visual style to X-Ray and verify beam-column joint geometry."
+                )
+            ),
+            Visual3DTeachScene(
+                id = "scene_microstation_3d",
+                moduleId = "microstation",
+                title = "MicroStation 3D Seed, AccuDraw & Reference Alignment",
+                subtitle = "Visualize 3D highway/viaduct pier coordinates, AccuDraw compass planes, and live DGN reference overlays.",
+                softwareCategory = SoftwareCategory.MICROSTATION,
+                diplomaTracks = diplomaTracksForModule("microstation"),
+                imageAssetType = "BIM_LEVELS",
+                modelPreset = "LEVELS_INFRA",
+                callouts = listOf(
+                    Visual3DCallout(
+                        id = "ms_c1",
+                        number = 1,
+                        label = "Coincident-World Survey Reference Plane",
+                        xFraction = 0.25f,
+                        yFraction = 0.80f,
+                        explanationSimple = "The base topographical survey DGN is attached at true global coordinates (Easting, Northing, Elevation).",
+                        exactCommandOrRule = "REFERENCE ATTACH > Coincident - World",
+                        siteImpact = "Prevents costly pier misalignment along metro rail and highway curves."
+                    ),
+                    Visual3DCallout(
+                        id = "ms_c2",
+                        number = 2,
+                        label = "AccuDraw 3D Compass (Top / Front Rotation)",
+                        xFraction = 0.50f,
+                        yFraction = 0.55f,
+                        explanationSimple = "The AccuDraw compass locks precision distance and angle in 3D Top (T), Front (F), or Side (S) planes.",
+                        exactCommandOrRule = "AccuDraw: Spacebar (Mode), O (Origin), T / F / S",
+                        siteImpact = "Allows exact 3.50m carriageway offset and vertical pier height drafting."
+                    ),
+                    Visual3DCallout(
+                        id = "ms_c3",
+                        number = 3,
+                        label = "SmartLine 3D Box Culvert & Pier Solids",
+                        xFraction = 0.72f,
+                        yFraction = 0.32f,
+                        explanationSimple = "Closed SmartLine profiles organized on dedicated DGN Levels for substructure vs superstructure.",
+                        exactCommandOrRule = "PLACE SMARTLINE + Level Manager",
+                        siteImpact = "Keeps drainage culverts, utility corridors, and bridge piers cleanly separated for site QA."
+                    )
+                ),
+                stageDescriptions = listOf(
+                    "Stage 1 (Seed DGN): Open 3D Metric Seed file with Master Units = Meters, Sub Units = mm.",
+                    "Stage 2 (Attach Survey): Attach Topo Survey DGN using Coincident - World orientation.",
+                    "Stage 3 (AccuDraw 3D): Snap compass origin (O) to pier centerline and lock Front (F) elevation.",
+                    "Stage 4 (Superstructure): Model viaduct pier cap and deck levels with Level Manager control."
+                )
+            ),
+            Visual3DTeachScene(
+                id = "scene_revit_struct_3d",
+                moduleId = "revit_arch_struct",
+                title = "Revit 3D Parametric RCC Frame & Rebar Cage",
+                subtitle = "Inspect 3D Story Levels, Height-constrained RCC Columns, Beams, and 3D Stirrup/Longitudinal Rebar.",
+                softwareCategory = SoftwareCategory.REVIT,
+                diplomaTracks = diplomaTracksForModule("revit_arch_struct"),
+                imageAssetType = "RCC_REBAR",
+                modelPreset = "RCC_FRAME",
+                callouts = listOf(
+                    Visual3DCallout(
+                        id = "rev_c1",
+                        number = 1,
+                        label = "Isolated Footing & Concrete Clear Cover (40mm)",
+                        xFraction = 0.35f,
+                        yFraction = 0.76f,
+                        explanationSimple = "Hosted to the Foundation Level with a 40mm-50mm concrete cover offset protecting steel rebar from soil moisture.",
+                        exactCommandOrRule = "Structure > Isolated (FT) | Cover Settings",
+                        siteImpact = "Ensures 50mm spacer blocks are placed on PCC before lowering the footing rebar mat."
+                    ),
+                    Visual3DCallout(
+                        id = "rev_c2",
+                        number = 2,
+                        label = "Height-Constrained RCC Column (CL)",
+                        xFraction = 0.50f,
+                        yFraction = 0.48f,
+                        explanationSimple = "Placed upward from Level 1 to Level 2 by setting the Options Bar to 'Height' instead of 'Depth'.",
+                        exactCommandOrRule = "CL (Structural Column) > Options Bar: Height -> Level 2",
+                        siteImpact = "Changing column size in 3D updates all plans, sections, and concrete BOQ schedules automatically."
+                    ),
+                    Visual3DCallout(
+                        id = "rev_c3",
+                        number = 3,
+                        label = "3D Main Longitudinal Bars & Stirrup Ties (RB)",
+                        xFraction = 0.56f,
+                        yFraction = 0.36f,
+                        explanationSimple = "Glowing amber 16mm main bars and 8mm @ 150mm c/c closed stirrups with 135° seismic hooks inside the column.",
+                        exactCommandOrRule = "Rebar (RB) > Shape T1 Stirrup > Parallel to Work Plane",
+                        siteImpact = "Eliminates rebar congestion at beam-column joints and generates automatic Bar Bending Schedules (BBS)."
+                    ),
+                    Visual3DCallout(
+                        id = "rev_c4",
+                        number = 4,
+                        label = "Parametric RCC Floor Beam (BM) & Slab",
+                        xFraction = 0.74f,
+                        yFraction = 0.22f,
+                        explanationSimple = "Structural framing beam hosted to Level 2 with automatic analytical line and concrete join cleanup.",
+                        exactCommandOrRule = "BM (Beam) > Chain > On Grids",
+                        siteImpact = "Accurately calculates net concrete volume without double-counting beam-column intersections."
+                    )
+                ),
+                stageDescriptions = listOf(
+                    "Stage 1 (Levels & Grids): Create Elevation Levels (LL) first, then Floor Plan Grids (GR).",
+                    "Stage 2 (Footings & Columns): Place Columns (CL with Height to Level 2) and Isolated Footings (FT).",
+                    "Stage 3 (Beams & Slab): Model Structural Framing Beams (BM) and 150mm Structural Floor Slab.",
+                    "Stage 4 (3D Rebar Cage): Cut Section, set Rebar Cover, and place longitudinal bars + stirrups (RB)."
+                )
+            ),
+            Visual3DTeachScene(
+                id = "scene_revit_plugins_3d",
+                moduleId = "revit_plugins",
+                title = "3D View Preparation & Automated NWC/Excel Sync",
+                subtitle = "See how 3D elements carry parameter data for DiRoots Excel round-trip and clean level-split NWC exports.",
+                softwareCategory = SoftwareCategory.REVIT,
+                diplomaTracks = diplomaTracksForModule("revit_plugins"),
+                imageAssetType = "BIM_LEVELS",
+                modelPreset = "LEVELS_INFRA",
+                callouts = listOf(
+                    Visual3DCallout(
+                        id = "plug_c1",
+                        number = 1,
+                        label = "Sequential 3D Pile & Column Numbering (pyRevit)",
+                        xFraction = 0.30f,
+                        yFraction = 0.72f,
+                        explanationSimple = "Every 3D foundation pile and column gets a sequential Mark (C-01, C-02…) matching the site rig path.",
+                        exactCommandOrRule = "pyRevit Tab > Modify > ReNumber",
+                        siteImpact = "Site engineers can track exact concrete pour cubes against each numbered 3D column."
+                    ),
+                    Visual3DCallout(
+                        id = "plug_c2",
+                        number = 2,
+                        label = "Bi-Directional 3D Parameter Sync (DiRoots SheetLink)",
+                        xFraction = 0.54f,
+                        yFraction = 0.46f,
+                        explanationSimple = "3D elements store Concrete Grade (M30), Fire Rating, and Pour Status synced directly from Excel.",
+                        exactCommandOrRule = "DiRootsOne > SheetLink > Export / Import Excel",
+                        siteImpact = "Updates 400+ 3D structural elements in 90 seconds without manual clicking."
+                    ),
+                    Visual3DCallout(
+                        id = "plug_c3",
+                        number = 3,
+                        label = "Level-Split 3D NWC Export View",
+                        xFraction = 0.74f,
+                        yFraction = 0.25f,
+                        explanationSimple = "Dedicated '3D_NWC_EXPORT' view with Shared Coordinates and 'Divide file into levels' enabled.",
+                        exactCommandOrRule = "File > Export > NWC (Navisworks Settings: Shared Coordinates)",
+                        siteImpact = "Ensures Architecture, Structure, and MEP models align millimeter-perfectly in Navisworks."
+                    )
+                ),
+                stageDescriptions = listOf(
+                    "Stage 1 (Clean 3D View): Duplicate 3D view as '3D_NWC_EXPORT' and hide 2D annotations.",
+                    "Stage 2 (pyRevit ReNumber): Spline-renumber all structural columns and footings in site order.",
+                    "Stage 3 (SheetLink Sync): Round-trip structural schedules to Excel to populate concrete grades.",
+                    "Stage 4 (NWC Export): Export level-split NWC cache with Convert Element IDs checked."
+                )
+            ),
+            Visual3DTeachScene(
+                id = "scene_bluebeam_3d",
+                moduleId = "bluebeam_revu",
+                title = "2D Calibrated PDF Takeoff to 3D Concrete Volume",
+                subtitle = "Visualize how Bluebeam 2D Dynamic Fill Area x Slab Thickness translates into 3D concrete pour volume & shuttering.",
+                softwareCategory = SoftwareCategory.BLUEBEAM,
+                diplomaTracks = diplomaTracksForModule("bluebeam_revu"),
+                imageAssetType = "BIM_LEVELS",
+                modelPreset = "RCC_FRAME",
+                callouts = listOf(
+                    Visual3DCallout(
+                        id = "bb_c1",
+                        number = 1,
+                        label = "X & Y Axis Scale Calibration Check",
+                        xFraction = 0.24f,
+                        yFraction = 0.78f,
+                        explanationSimple = "Before any takeoff, calibrate against a known 6000mm grid bay in both X and Y directions.",
+                        exactCommandOrRule = "Tools > Measure > Calibrate (Ctrl+Alt+M)",
+                        siteImpact = "Catches distorted 'Fit-to-Page' PDF prints before ordering ready-mix concrete."
+                    ),
+                    Visual3DCallout(
+                        id = "bb_c2",
+                        number = 2,
+                        label = "Dynamic Fill Slab Area & Perimeter Shuttering",
+                        xFraction = 0.52f,
+                        yFraction = 0.50f,
+                        explanationSimple = "Flood-fills the slab bay to extract both 2D Top Surface Area (m²) and Edge Shuttering Polylength (m).",
+                        exactCommandOrRule = "Dynamic Fill (J) -> Area + Polylength",
+                        siteImpact = "Gives the QS both concrete area and perimeter formwork length in one click."
+                    ),
+                    Visual3DCallout(
+                        id = "bb_c3",
+                        number = 3,
+                        label = "3D Volume Formula in Markups List (Area × Depth)",
+                        xFraction = 0.72f,
+                        yFraction = 0.28f,
+                        explanationSimple = "Multiplies measured 2D Area by 3D Slab Depth (e.g., 0.15m) in a custom Markups List formula column.",
+                        exactCommandOrRule = "Markups List (Alt+L) > Custom Column: Area * Thickness",
+                        siteImpact = "Produces instant cubic meter (m³) concrete BOQ for transit mixer ordering."
+                    )
+                ),
+                stageDescriptions = listOf(
+                    "Stage 1 (Calibrate): Snap to known structural grid dimension in X & Y axes.",
+                    "Stage 2 (Dynamic Fill): Press J and fill slab bays to capture Area (m²) and Perimeter (m).",
+                    "Stage 3 (3D Depth Formula): Add Custom Column 'Concrete Volume = Area * 0.15m' in Markups List.",
+                    "Stage 4 (Overlay Check): Run Ctrl+Alt+O Overlay Pages to spot moved columns in Red/Green."
+                )
+            ),
+            Visual3DTeachScene(
+                id = "scene_navisworks_3d",
+                moduleId = "navisworks_4d_5d",
+                title = "Navisworks 3D Clash Detection & 4D TimeLiner Simulation",
+                subtitle = "Inspect a live 3D Hard Clash between an HVAC pipe and an RCC beam, plus 4D construction sequence linking.",
+                softwareCategory = SoftwareCategory.NAVISWORKS,
+                diplomaTracks = diplomaTracksForModule("navisworks_4d_5d"),
+                imageAssetType = "CLASH_NAVISWORKS",
+                modelPreset = "CLASH_4D",
+                callouts = listOf(
+                    Visual3DCallout(
+                        id = "nw_c1",
+                        number = 1,
+                        label = "Federated 3D Structural Frame (Selection A)",
+                        xFraction = 0.28f,
+                        yFraction = 0.62f,
+                        explanationSimple = "Linked Structural NWC model grouped using a dynamic Search Set ('Category = Structural Framing').",
+                        exactCommandOrRule = "Find Items (Shift+F3) > Save Search Set",
+                        siteImpact = "Automatically includes new or resized beams when the structural NWC refreshes."
+                    ),
+                    Visual3DCallout(
+                        id = "nw_c2",
+                        number = 2,
+                        label = "Red/Amber 3D Hard Clash Zone (Pipe vs RCC Beam)",
+                        xFraction = 0.52f,
+                        yFraction = 0.45f,
+                        explanationSimple = "Clash Detective highlights the exact 3D intersection where the chilled water pipe pierces the RCC beam web.",
+                        exactCommandOrRule = "Clash Detective (Ctrl+F2) > Type: Hard | Tolerance: 10mm",
+                        siteImpact = "Allows engineers to place a pre-cast puddle flange/sleeve or reroute the duct BEFORE pouring concrete!"
+                    ),
+                    Visual3DCallout(
+                        id = "nw_c3",
+                        number = 3,
+                        label = "MEP HVAC & Piping Network (Selection B)",
+                        xFraction = 0.74f,
+                        yFraction = 0.52f,
+                        explanationSimple = "Tested for both Hard Clashes (physical overlap) and Clearance Clashes (50mm insulation + maintenance buffer).",
+                        exactCommandOrRule = "Clash Detective > Clearance Test (0.05m)",
+                        siteImpact = "Ensures lagging insulation and valve access fit above the false ceiling."
+                    ),
+                    Visual3DCallout(
+                        id = "nw_c4",
+                        number = 4,
+                        label = "4D TimeLiner Construction Phase Highlight",
+                        xFraction = 0.60f,
+                        yFraction = 0.22f,
+                        explanationSimple = "Links 3D Search Sets to Primavera/MS Project tasks (Task Type = Construct) to simulate week-by-week erection.",
+                        exactCommandOrRule = "TimeLiner (Ctrl+T) > Auto-Attach by Rules > Simulate",
+                        siteImpact = "Visualizes crane sequencing and catches out-of-sequence work on site."
+                    )
+                ),
+                stageDescriptions = listOf(
+                    "Stage 1 (Federate NWF): Append Architecture, Structure, and MEP .NWC files into one .NWF.",
+                    "Stage 2 (Search Sets): Press Shift+F3 and save rule-based Search Sets for Beams and MEP Pipes.",
+                    "Stage 3 (Clash Detective): Press Ctrl+F2, run Hard Clash (Structure vs MEP), and group clashes.",
+                    "Stage 4 (4D TimeLiner): Press Ctrl+T, link Search Sets to schedule tasks, and play 3D simulation."
+                )
+            ),
+            Visual3DTeachScene(
+                id = "scene_cde_3d",
+                moduleId = "cde_iso19650",
+                title = "ISO 19650 3D Federated Model Containers (WIP -> Shared -> Published)",
+                subtitle = "See how discipline 3D models progress from WIP (S0) to Shared Coordination (S1) and Published Site Issue (CR).",
+                softwareCategory = SoftwareCategory.CDE_COBIE,
+                diplomaTracks = diplomaTracksForModule("cde_iso19650"),
+                imageAssetType = "BIM_LEVELS",
+                modelPreset = "LEVELS_INFRA",
+                callouts = listOf(
+                    Visual3DCallout(
+                        id = "cde_c1",
+                        number = 1,
+                        label = "WIP Container (S0): Discipline Authoring",
+                        xFraction = 0.25f,
+                        yFraction = 0.75f,
+                        explanationSimple = "In-progress 3D Revit/DGN model inside the structural team's private workspace prior to internal QA check.",
+                        exactCommandOrRule = "ISO 19650 State: WIP (Suitability Code S0)",
+                        siteImpact = "Never used for site construction—prevents unverified dimensions from reaching the field."
+                    ),
+                    Visual3DCallout(
+                        id = "cde_c2",
+                        number = 2,
+                        label = "SHARED Container (S1–S3): Multi-Discipline 3D Clash Check",
+                        xFraction = 0.52f,
+                        yFraction = 0.48f,
+                        explanationSimple = "Approved for cross-discipline coordination so Architecture, Structure, and MEP models can be federated.",
+                        exactCommandOrRule = "ISO 19650 State: SHARED (S1 Coordination / S3 Review)",
+                        siteImpact = "All consultants coordinate against the exact same model revision in ACC / ProjectWise."
+                    ),
+                    Visual3DCallout(
+                        id = "cde_c3",
+                        number = 3,
+                        label = "PUBLISHED Container (A1 / CR): Good For Construction",
+                        xFraction = 0.75f,
+                        yFraction = 0.24f,
+                        explanationSimple = "Client-authorized 3D model and GFC sheets pushed to site tablets for physical construction.",
+                        exactCommandOrRule = "ISO 19650 State: PUBLISHED (Authorized for Site)",
+                        siteImpact = "Guarantees the site engineer pours concrete from the latest signed-off revision."
+                    )
+                ),
+                stageDescriptions = listOf(
+                    "Stage 1 (WIP - S0): Author 3D discipline model and run internal model health check.",
+                    "Stage 2 (SHARED - S1): Publish to Shared container for federated clash coordination.",
+                    "Stage 3 (PUBLISHED - A1): Authorize clash-free model & drawings for site construction.",
+                    "Stage 4 (ARCHIVE): Store superseded revisions and final As-Built CR record."
+                )
+            ),
+            Visual3DTeachScene(
+                id = "scene_cobie_3d",
+                moduleId = "cobie",
+                title = "6D BIM: From 3D Equipment & Spaces to COBie Handover Sheet",
+                subtitle = "Visualize which 3D building elements (Rooms/Spaces & Maintainable MEP Equipment) map into COBie 2.4.",
+                softwareCategory = SoftwareCategory.CDE_COBIE,
+                diplomaTracks = diplomaTracksForModule("cobie"),
+                imageAssetType = "CLASH_NAVISWORKS",
+                modelPreset = "CLASH_4D",
+                callouts = listOf(
+                    Visual3DCallout(
+                        id = "cob_c1",
+                        number = 1,
+                        label = "Excluded: Cast-in-Place RCC Footings, Columns & Beams",
+                        xFraction = 0.30f,
+                        yFraction = 0.68f,
+                        explanationSimple = "Permanent structural concrete framing is excluded from COBie Component sheets because it is not replaceable O&M equipment.",
+                        exactCommandOrRule = "COBie Rule: Exclude permanent structure",
+                        siteImpact = "Keeps the Facility Manager's database clean and focused on maintainable assets."
+                    ),
+                    Visual3DCallout(
+                        id = "cob_c2",
+                        number = 2,
+                        label = "Included: 3D Maintainable MEP Asset (COBie.Type & Component)",
+                        xFraction = 0.56f,
+                        yFraction = 0.45f,
+                        explanationSimple = "Pumps, Chillers, Valves, AHUs, and Fire Doors export catalog data to COBie.Type and serial/install date to COBie.Component.",
+                        exactCommandOrRule = "Revit Interoperability Tools > COBie Extension > Select Elements",
+                        siteImpact = "Operations team can click an asset or scan a barcode to see warranty & spare parts."
+                    ),
+                    Visual3DCallout(
+                        id = "cob_c3",
+                        number = 3,
+                        label = "3D Room / Zone Hierarchy (Facility -> Floor -> Space)",
+                        xFraction = 0.72f,
+                        yFraction = 0.25f,
+                        explanationSimple = "Every maintainable 3D component knows which 3D Room (COBie.Space) and Level (COBie.Floor) it sits inside.",
+                        exactCommandOrRule = "COBie Hierarchy: Facility > Floor > Space > Zone",
+                        siteImpact = "Tells the technician the exact room number before walking in with tools."
+                    )
+                ),
+                stageDescriptions = listOf(
+                    "Stage 1 (Facility & Floors): Map Revit Building and Story Levels to COBie.Facility & COBie.Floor.",
+                    "Stage 2 (3D Spaces): Map enclosed 3D Rooms/Spaces to COBie.Space with HVAC/Fire Zones.",
+                    "Stage 3 (Maintainable Assets): Filter out RCC structure; tag Pumps, AHUs, and Fire Doors.",
+                    "Stage 4 (COBie Export): Export color-coded COBie 2.4 Excel sheet for 6D Facility Handover."
+                )
+            )
+        )
+    }
+
+    fun visual3DSceneForModule(moduleId: String): Visual3DTeachScene {
+        return visual3DScenes.firstOrNull { it.moduleId == moduleId } ?: visual3DScenes.first()
     }
 }

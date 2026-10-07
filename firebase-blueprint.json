@@ -1,0 +1,197 @@
+{
+  "entities": {
+    "UserStudyProfile": {
+      "title": "UserStudyProfile",
+      "description": "Per-user Civil Engineering & BIM Diploma study profile and active track preferences.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase user UID."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Student display name."
+        },
+        "selectedDiplomaTrack": {
+          "type": "string",
+          "description": "Currently selected Diploma Track ID."
+        },
+        "preferredSoftwareVersion": {
+          "type": "string",
+          "description": "Preferred CAD/BIM software version string."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "selectedDiplomaTrack",
+        "preferredSoftwareVersion",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CloudBookmarkedCommand": {
+      "title": "CloudBookmarkedCommand",
+      "description": "Cloud-synced CAD/BIM command and shortcut bookmark saved by a student.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique command bookmark identifier."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "software": {
+          "type": "string",
+          "description": "Software platform name (AutoCAD, Revit, Navisworks, etc.)."
+        },
+        "versionScope": {
+          "type": "string",
+          "description": "Software version applicability."
+        },
+        "taskTitle": {
+          "type": "string",
+          "description": "Engineering task title."
+        },
+        "command": {
+          "type": "string",
+          "description": "Exact command or tool name."
+        },
+        "shortcut": {
+          "type": "string",
+          "description": "Keyboard alias or shortcut."
+        },
+        "menuPath": {
+          "type": "string",
+          "description": "Ribbon or menu navigation path."
+        },
+        "siteExample": {
+          "type": "string",
+          "description": "Real civil/building site usage example."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "software",
+        "versionScope",
+        "taskTitle",
+        "command",
+        "shortcut",
+        "menuPath",
+        "siteExample",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CloudInterviewAttempt": {
+      "title": "CloudInterviewAttempt",
+      "description": "Cloud-synced mock interview score and feedback record for a student.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique interview attempt identifier."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "topic": {
+          "type": "string",
+          "description": "Civil/BIM interview topic."
+        },
+        "questionType": {
+          "type": "string",
+          "description": "Question category (Technical or HR)."
+        },
+        "question": {
+          "type": "string",
+          "description": "Interview question prompt."
+        },
+        "userAnswer": {
+          "type": "string",
+          "description": "Student's submitted answer."
+        },
+        "score": {
+          "type": "integer",
+          "description": "Score out of 10 (0..10)."
+        },
+        "whatWasGood": {
+          "type": "string",
+          "description": "Positive evaluation notes."
+        },
+        "betterSampleAnswer": {
+          "type": "string",
+          "description": "Improved sample answer."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "topic",
+        "questionType",
+        "question",
+        "userAnswer",
+        "score",
+        "whatWasGood",
+        "betterSampleAnswer",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserStudyProfile"
+      },
+      "description": "Stores per-user Civil & BIM study profile and active Diploma Track selection."
+    },
+    "/users/{userId}/bookmarked_commands/{commandId}": {
+      "schema": {
+        "$ref": "#/entities/CloudBookmarkedCommand"
+      },
+      "description": "Stores cloud-synced CAD & BIM command bookmarks per user."
+    },
+    "/users/{userId}/interview_attempts/{attemptId}": {
+      "schema": {
+        "$ref": "#/entities/CloudInterviewAttempt"
+      },
+      "description": "Stores cloud-synced mock interview scorecards per user."
+    }
+  }
+}

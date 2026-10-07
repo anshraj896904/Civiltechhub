@@ -22,7 +22,7 @@ class ExampleRobolectricTest {
     fun `verify app name and diploma curriculum topics`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val appName = context.getString(R.string.app_name)
-        assertEquals("CivilBIM Tutor", appName)
+        assertEquals("Civil Tutor", appName)
 
         val topicIds = CivilCurriculumCatalog.topics.map { it.id }
         assertTrue(topicIds.contains("autocad"))
@@ -84,5 +84,16 @@ class ExampleRobolectricTest {
         )
         assertEquals(1, clashSearch.size)
         assertEquals("cmd_nw_clash", clashSearch.first().id)
+
+        // Verify 3D Image Teach scenes and filter
+        val visual3DItems = CivilCurriculumCatalog.filterStudyMaterials(
+            query = "",
+            diplomaTrack = DiplomaTrack.ALL_TRACKS,
+            softwareCategory = SoftwareCategory.ALL,
+            materialType = StudyMaterialType.VISUAL_3D_TEACH
+        )
+        assertEquals(CivilCurriculumCatalog.topics.size, visual3DItems.size)
+        assertEquals(8, CivilCurriculumCatalog.visual3DScenes.size)
+        assertTrue(CivilCurriculumCatalog.visual3DScenes.all { it.callouts.isNotEmpty() && it.stageDescriptions.size == 4 })
     }
 }

@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -85,6 +86,7 @@ import com.example.data.ChatSessionEntity
 import com.example.data.CivilCurriculumCatalog
 import com.example.data.StudyMode
 import com.example.data.TopicLessonModule
+import com.example.ui.components.ThreeDVisualTeachCard
 import com.example.ui.theme.BlueprintCyan
 import com.example.ui.theme.BlueprintNavy
 import com.example.ui.theme.BlueprintNavyDark
@@ -453,7 +455,7 @@ private fun TutorHeroHeader(
                     }
                     Column {
                         Text(
-                            text = "CivilBIM Diploma Tutor",
+                            text = "Civil Tutor",
                             style = MaterialTheme.typography.titleLarge,
                             color = Color.White
                         )
@@ -799,6 +801,75 @@ private fun TutorStructuredMessageCard(
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
+                    }
+                }
+            }
+
+            // 3b. Interactive 3D Image & Viewport Teach Card inside Tutor Replies
+            if (message.siteExample.isNotBlank() || message.smallStepsFormatted.isNotBlank()) {
+                var show3DVisualTeach by rememberSaveable(message.id) { mutableStateOf(false) }
+                val matchedModule = remember(message.mainText, message.suggestedSoftwareName) {
+                    val combined = "${message.suggestedSoftwareName} ${message.mainText}".lowercase()
+                    CivilCurriculumCatalog.topics.firstOrNull {
+                        combined.contains(it.shortName.lowercase()) ||
+                            combined.contains(it.id.replace("_", " "))
+                    } ?: CivilCurriculumCatalog.topics.first()
+                }
+                val scene = remember(matchedModule.id) {
+                    CivilCurriculumCatalog.visual3DSceneForModule(matchedModule.id)
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = BlueprintNavyDark,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { show3DVisualTeach = !show3DVisualTeach }
+                            .testTag("chat_toggle_3d_teach_${message.id}")
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ViewInAr,
+                                    contentDescription = null,
+                                    tint = SafetyAmber,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "3D Image Teach: ${scene.title}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Text(
+                                text = if (show3DVisualTeach) "Hide 3D" else "Inspect 3D",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SafetyAmber,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    AnimatedVisibility(visible = show3DVisualTeach) {
+                        ThreeDVisualTeachCard(
+                            scene = scene,
+                            onAskTutorAbout3D = { sc, callout ->
+                                onQuickReply(
+                                    "Explain Pin #${callout.number} (${callout.label}) from the ${sc.title} 3D diagram with step-by-step commands."
+                                )
+                            }
+                        )
                     }
                 }
             }

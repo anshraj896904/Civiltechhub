@@ -10,6 +10,7 @@ import com.example.data.CivilCurriculumCatalog
 import com.example.data.CivilTutorDatabase
 import com.example.data.CivilTutorRepository
 import com.example.data.DiplomaTrack
+import com.example.data.FirebaseCloudRepository
 import com.example.data.GeminiTutorService
 import com.example.data.InterviewAttemptEntity
 import com.example.data.SoftwareCategory
@@ -18,11 +19,14 @@ import com.example.data.StudyMaterialIndexItem
 import com.example.data.StudyMaterialType
 import com.example.data.StudyMode
 import com.example.data.TopicLessonModule
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -49,6 +53,7 @@ data class DedicatedInterviewUiState(
 
 class CivilTutorViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: CivilTutorRepository
+    private val cloudRepository: FirebaseCloudRepository = FirebaseCloudRepository(application.applicationContext)
     private val geminiService = GeminiTutorService()
 
     private val _currentTab = MutableStateFlow(MainTab.TUTOR)
@@ -137,6 +142,33 @@ class CivilTutorViewModel(application: Application) : AndroidViewModel(applicati
             // Pre-bookmark 2 essential commands so the Vault has immediate examples
             val firstCmd = CivilCurriculumCatalog.topics.first().keyCommands.first()
             repository.toggleBookmark(firstCmd, isCurrentlySaved = false)
+
+            // Observe cloud profile when authenticated
+            if (runCatching { Firebase.auth.currentUser }.getOrNull() != null) {
+                cloudRepository.observeStudyProfile()
+                    .catch { }
+                    .collect { profile ->
+                        if (profile != null) {
+                            runCatching { DiplomaTrack.valueOf(profile.selectedDiplomaTrack) }.getOrNull()?.let {
+                                _selectedDiplomaTrack.value = it
+                            }
+                            if (profile.preferredSoftwareVersion.isNotBlank() && _softwareVersion.value.isBlank()) {
+                                _softwareVersion.value = profile.preferredSoftwareVersion
+                            }
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun syncProfileToCloudIfSignedIn() {
+        val user = runCatching { Firebase.auth.currentUser }.getOrNull() ?: return
+        viewModelScope.launch {
+            cloudRepository.saveStudyProfile(
+                displayName = user.displayName ?: user.email ?: "Civil Student",
+                selectedDiplomaTrack = _selectedDiplomaTrack.value.name,
+                preferredSoftwareVersion = _softwareVersion.value
+            )
         }
     }
 
@@ -150,6 +182,7 @@ class CivilTutorViewModel(application: Application) : AndroidViewModel(applicati
 
     fun selectDiplomaTrack(track: DiplomaTrack) {
         _selectedDiplomaTrack.value = track
+        syncProfileToCloudIfSignedIn()
     }
 
     fun selectSoftwareCategory(category: SoftwareCategory) {
@@ -250,6 +283,7 @@ class CivilTutorViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setSoftwareVersionAndContinue(version: String) {
         _softwareVersion.value = version
+        syncProfileToCloudIfSignedIn()
         val topic = _selectedTopicName.value.ifBlank { "this software" }
         sendUserMessage("I am using version $version for $topic. Please give me the small steps, exact commands, menu paths, shortcuts, and a practice exercise.")
     }
@@ -432,6 +466,20 @@ class CivilTutorViewModel(application: Application) : AndroidViewModel(applicati
                         betterSampleAnswer = better
                     )
                 )
+                if (runCatching { Firebase.auth.currentUser }.getOrNull() != null) {
+                    cloudRepository.saveInterviewAttempt(
+                        attemptId = "att_${System.currentTimeMillis()}",
+                        attempt = InterviewAttemptEntity(
+                            topic = stateBefore.focusArea,
+                            questionType = stateBefore.currentQuestionCategory,
+                            questionAsked = stateBefore.currentQuestion,
+                            studentAnswer = trimmed,
+                            scoreOutOf10 = score,
+                            whatWasGood = good,
+                            betterSampleAnswer = better
+                        )
+                    )
+                }
 
                 _dedicatedInterviewState.value = stateBefore.copy(
                     currentQuestionCategory = nextCategory,
@@ -452,6 +500,24 @@ class CivilTutorViewModel(application: Application) : AndroidViewModel(applicati
     fun toggleCommandBookmark(item: SoftwareCommandItem, isCurrentlySaved: Boolean) {
         viewModelScope.launch {
             repository.toggleBookmark(item, isCurrentlySaved)
+            if (runCatching { Firebase.auth.currentUser }.getOrNull() != null) {
+                if (isCurrentlySaved) {
+                    cloudRepository.removeBookmarkedCommand(item.id)
+                } else {
+                    cloudRepository.saveBookmarkedCommand(
+                        BookmarkedCommandEntity(
+                            id = item.id,
+                            software = item.software,
+                            versionScope = item.versionScope,
+                            taskTitle = item.taskTitle,
+                            command = item.command,
+                            shortcut = item.shortcut,
+                            menuPath = item.menuPath,
+                            siteExample = item.siteExample
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -469,12 +535,30 @@ class CivilTutorViewModel(application: Application) : AndroidViewModel(applicati
                 commandBlock = commandsBlock,
                 siteExample = siteExample
             )
+            if (runCatching { Firebase.auth.currentUser }.getOrNull() != null) {
+                val id = "custom_${System.currentTimeMillis()}"
+                cloudRepository.saveBookmarkedCommand(
+                    BookmarkedCommandEntity(
+                        id = id,
+                        software = software.ifBlank { _selectedTopicName.value.ifBlank { "BIM/CAD Software" } },
+                        versionScope = version.ifBlank { _softwareVersion.value.ifBlank { "2024/2025" } },
+                        taskTitle = "Saved Tutor Command Reference",
+                        command = commandsBlock.lines().firstOrNull() ?: commandsBlock,
+                        shortcut = "Saved from AI Tutor",
+                        menuPath = commandsBlock,
+                        siteExample = siteExample
+                    )
+                )
+            }
         }
     }
 
     fun removeBookmarkedCommand(id: String) {
         viewModelScope.launch {
             repository.removeBookmarkedCommand(id)
+            if (runCatching { Firebase.auth.currentUser }.getOrNull() != null) {
+                cloudRepository.removeBookmarkedCommand(id)
+            }
         }
     }
 }
