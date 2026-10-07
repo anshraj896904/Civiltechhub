@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">CivilBIM Tutor</string>
+    <string name="nav_tutor">AI Tutor</string>
+    <string name="nav_curriculum">Topics &amp; Lab</string>
+    <string name="nav_interview">Mock Interview</string>
+    <string name="nav_vault">Command Vault</string>
+    <string name="new_chat_button">New Chat</string>
+    <string name="chat_history_title">Saved Study Sessions</string>
+    <string name="mode_learn_topic">Learn a Topic</string>
+    <string name="mode_practice_software">Practice Software</string>
+    <string name="mode_mock_interview">Mock Interview</string>
+    <string name="input_placeholder">Ask a question, state your software version, or answer…</string>
+    <string name="send_message_desc">Send message</string>
+    <string name="hero_banner_desc">Civil Engineering and BIM 3D Structural Blueprint Illustration</string>
+    <string name="security_prototype_notice">Prototype Notice: Uses BuildConfig API key for Gemini REST API. Configure GEMINI_API_KEY in the AI Studio Secrets panel and do not share the APK publicly.</string>
+    <string name="select_version_prompt">Select your software version:</string>
+    <string name="bookmark_command">Bookmark Command</string>
+    <string name="start_interview_btn">Start New Mock Interview</string>
+    <string name="submit_answer_btn">Submit Answer for Scoring</string>
+</resources>
