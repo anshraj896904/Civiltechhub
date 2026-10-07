@@ -29,11 +29,18 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Build APK
-        run: gradle assembleDebug
+      - name: Check Java and Gradle
+        run: |
+          java -version
+          gradle --version
+
+      - name: Build Debug APK
+        run: |
+          gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Civiltechhub-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
