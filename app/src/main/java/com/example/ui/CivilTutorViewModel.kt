@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -51,6 +52,7 @@ data class DedicatedInterviewUiState(
     val questionNumber: Int = 1
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CivilTutorViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: CivilTutorRepository
     private val cloudRepository: FirebaseCloudRepository = FirebaseCloudRepository(application.applicationContext)
@@ -129,19 +131,27 @@ class CivilTutorViewModel(application: Application) : AndroidViewModel(applicati
             initialValue = emptyList()
         )
 
-        // Seed initial session and starter bookmarks if empty
+        // Reuse existing session if available, or seed initial session and starter bookmarks
         viewModelScope.launch {
-            val initialId = repository.createNewSession(
-                title = "Diploma Study Session",
-                mode = StudyMode.UNSELECTED,
-                topic = "",
-                softwareVersion = ""
-            )
-            _activeSessionId.value = initialId
+            val existingSessions = runCatching { repository.allSessions.first() }.getOrDefault(emptyList())
+            if (existingSessions.isNotEmpty()) {
+                val latest = existingSessions.first()
+                _activeSessionId.value = latest.id
+                _currentMode.value = runCatching { StudyMode.valueOf(latest.mode) }.getOrDefault(StudyMode.UNSELECTED)
+                _selectedTopicName.value = latest.selectedTopic
+                _softwareVersion.value = latest.softwareVersion
+            } else {
+                val initialId = repository.createNewSession(
+                    title = "Diploma Study Session",
+                    mode = StudyMode.UNSELECTED,
+                    topic = "",
+                    softwareVersion = ""
+                )
+                _activeSessionId.value = initialId
 
-            // Pre-bookmark 2 essential commands so the Vault has immediate examples
-            val firstCmd = CivilCurriculumCatalog.topics.first().keyCommands.first()
-            repository.toggleBookmark(firstCmd, isCurrentlySaved = false)
+                val firstCmd = CivilCurriculumCatalog.topics.first().keyCommands.first()
+                repository.toggleBookmark(firstCmd, isCurrentlySaved = false)
+            }
 
             // Observe cloud profile when authenticated
             if (runCatching { Firebase.auth.currentUser }.getOrNull() != null) {
@@ -393,19 +403,24 @@ class CivilTutorViewModel(application: Application) : AndroidViewModel(applicati
                     title = newTitle
                 )
 
-                // If this was a scored mock interview turn, persist to interview_attempts table
+                // If this was a scored mock interview turn, persist to interview_attempts table and Cloud Firestore
                 if (structured.interviewScoreOutOf10 != null && lastBotMsg?.nextInterviewQuestion?.isNotBlank() == true) {
-                    repository.recordInterviewAttempt(
-                        InterviewAttemptEntity(
-                            topic = _selectedTopicName.value.ifBlank { "Civil & BIM Mixed" },
-                            questionType = lastBotMsg.interviewQuestionType.ifBlank { "Technical" },
-                            questionAsked = lastBotMsg.nextInterviewQuestion,
-                            studentAnswer = text,
-                            scoreOutOf10 = structured.interviewScoreOutOf10.coerceIn(1, 10),
-                            whatWasGood = structured.interviewWhatWasGood,
-                            betterSampleAnswer = structured.interviewBetterSampleAnswer
-                        )
+                    val attemptEntity = InterviewAttemptEntity(
+                        topic = _selectedTopicName.value.ifBlank { "Civil & BIM Mixed" },
+                        questionType = lastBotMsg.interviewQuestionType.ifBlank { "Technical" },
+                        questionAsked = lastBotMsg.nextInterviewQuestion,
+                        studentAnswer = text,
+                        scoreOutOf10 = structured.interviewScoreOutOf10.coerceIn(1, 10),
+                        whatWasGood = structured.interviewWhatWasGood,
+                        betterSampleAnswer = structured.interviewBetterSampleAnswer
                     )
+                    repository.recordInterviewAttempt(attemptEntity)
+                    if (runCatching { Firebase.auth.currentUser }.getOrNull() != null) {
+                        cloudRepository.saveInterviewAttempt(
+                            attemptId = "att_${System.currentTimeMillis()}",
+                            attempt = attemptEntity
+                        )
+                    }
                 }
             } finally {
                 _isGenerating.value = false

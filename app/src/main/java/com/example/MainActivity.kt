@@ -100,7 +100,10 @@ fun AppAuthGateRoot() {
                     currentUser = null
                 }
             )
-            CivilBimTutorApp(viewModel = viewModel)
+            CivilBimTutorApp(
+                viewModel = viewModel,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -115,7 +118,8 @@ private data class NavDestination(
 
 @Composable
 fun CivilBimTutorApp(
-    viewModel: CivilTutorViewModel = viewModel()
+    viewModel: CivilTutorViewModel = viewModel(),
+    modifier: Modifier = Modifier
 ) {
     val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
     val messages by viewModel.activeMessages.collectAsStateWithLifecycle()
@@ -164,7 +168,7 @@ fun CivilBimTutorApp(
         )
     )
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val isExpandedScreen = maxWidth >= 600.dp
 
         Scaffold(
