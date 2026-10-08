@@ -1,1 +1,21 @@
+workflows:
+  android-apk:
+    name: Civiltechhub Android APK
+    environment:
+      java: 17
 
+    scripts:
+      - name: Install Gradle 9.3.1
+        script: |
+          wget -q https://services.gradle.org/distributions/gradle-9.3.1-bin.zip
+          unzip -q gradle-9.3.1-bin.zip
+          export PATH="$PWD/gradle-9.3.1/bin:$PATH"
+          gradle --version
+
+      - name: Build Debug APK
+        script: |
+          export PATH="$PWD/gradle-9.3.1/bin:$PATH"
+          gradle assembleDebug --stacktrace
+
+    artifacts:
+      - app/build/outputs/apk/debug/app-debug.apk
